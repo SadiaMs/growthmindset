@@ -1,60 +1,54 @@
-Islamic Studies
-Which of the following companion of Hazrat Muhammad(PBUH) was not among “Ashrah Mubashrah”?
-A. Hazrat Khalid bin Waleed (RA)
-B. Hazrat Saad bin abi waqas(RA)
-C. Hazrat Zubair Ibn e Awam (RA)
-D. Hazrat Talha(RA)
+from fileinput import fileno
+import streamlit as st
+import pandas as pd
+from io import BytesIO
 
-In Islamic Law of Inheritance each female get half share of male standing at the same degree of relationship, except ________ who gets equal share as____.
-A. Sister_Brother
-B. Daugher_Son
-C. Mather_Father
-D. None of these (Female always get a half share as men)
+st.set_page_config(page_title="File Converter", layout="wide")
+st.title("File Converter & Cleaner")
+st.write("Upload csv or excel files, clean data, and convert formats.")
 
-Umer Bin Abdel Aziz was 11 Caliph of ________.
-A. The Umayyed Caliphate
-B. The Abbasid Caliphate
-C. The Rashidun Caliphate
-D. Ottoman Ampire
+files = st.file_uploader("Upload CSV or EXcel Files.", type=["csv", "xlsx"], accept_multiple_files=True)
 
-Which is the first mosque in Islamic History?
-A. Masjid e Nabvi
-B. Masjid e Quba
-C. Masjid Ul Haram
-D. Masjid e Aqsa
+if files : 
+    for file in files :
+        ext = file.name.split(".")[-1]
+        df = pd.read_csv(file) if ext == "csv" else pd.read_excel(file)
 
-Which wife of the Holy Prophet (SAWW) was alive at the time of the Karbala incident?
-A. Hazrat Umme Salma
-B. Hazrat Aiysha
-C. Hazrat Zainab
-D. All of the Above
+        st.subheader(f"{file.name} - Preview")
+        st.dataframe(df.head())
 
-Which Caliph of Rashidun Caliph had the longest reign?
-A. Hazrat Abu Bakr (R.A)
-B. Hazrat Umer (R.A)
-C. Hazrat Uthman (R.A)
-D. Hazrat Ali (R.A)
+        if st.checkbox(f"Remove Duplicates - {file.name}"):
+            df = df.drop_duplicates()
+            st.success("Duplicates Removed")
+            st.dataframe(df.head())
 
-What is the maximum RAKATs in Chasht Prayer?
-A. 4
-B. 6
-C. 8
-D. 2
+            if st.checkbox(f"Fill Missing values - {file.name}"):
+                df = fileno(df.select_dtypes(include=["number"]).mean(), inplace=True)
+                st.success("Missing Values filled with mean")
+                st.dataframe(df.head())
 
-Holy Quran has ____ Rukus?
-A. 540
-B. 552
-C. 554
-D. 558
+            selected_columns = st.multiselect(f"Select COlumns - {file.name}", df.columns, default=df.columns)
+            df = df[selected_columns]
+            st.dataframe(df.head())
 
-When was fasting made obligatory in Islam?
-A. 2 Hijri
-B. 3 Hijri
-C. 4 Hijri
-D. 5 Hijri
+            if st.checkbox(f"Show Chart - {file.name}") and not df.select_dtypes(include="number").empty:
+                st.bar_chart(df.select_dtypes(include="number").iloc[:, :2])
 
-In which holy battle enemy of the Holy Prophet Abu Jahl was killed?
-A. Gazwa Badr
-B. Gazwa Ohad
-C. Gazwa Khyber
-D. Gazwa Tabook
+            format_choise = st.radio(f"Convert {file.name} to:", ["csv", "Excel"], key=file.name)
+
+            if st.button(f"Download {file.name} as {format_choise}"):
+                output = BytesIO()
+                if format_choise == "csv":
+                    df.to_csv(output, index=False)
+                    mine = "text/csv"
+                    new_name = file.name.replace(ext, "csv")
+
+                else : 
+                    df.to_excel(output, index=False, engine='openpyxl')
+                    mine = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    new_name = file.name.replace(ext, "xlsx")
+
+                output.seek(0)
+                st.download_button("Download file",file_name=new_name, data=output, mime=mine)
+
+            st.success("Processing Complete!")
